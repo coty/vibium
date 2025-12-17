@@ -278,6 +278,50 @@ func main() {
 	screenshotCmd.Flags().StringP("output", "o", "screenshot.png", "Output file path")
 	rootCmd.AddCommand(screenshotCmd)
 
+	rootCmd.AddCommand(&cobra.Command{
+		Use:   "eval [url] [expression]",
+		Short: "Navigate to a URL and evaluate a JavaScript expression",
+		Args:  cobra.ExactArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			url := args[0]
+			expression := args[1]
+
+			fmt.Println("Launching browser...")
+			launchResult, err := browser.Launch(browser.LaunchOptions{Headless: true})
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error launching browser: %v\n", err)
+				os.Exit(1)
+			}
+			defer launchResult.Close()
+
+			fmt.Println("Connecting to BiDi...")
+			conn, err := bidi.Connect(launchResult.WebSocketURL)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error connecting: %v\n", err)
+				os.Exit(1)
+			}
+			defer conn.Close()
+
+			client := bidi.NewClient(conn)
+
+			fmt.Printf("Navigating to %s...\n", url)
+			_, err = client.Navigate("", url)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error navigating: %v\n", err)
+				os.Exit(1)
+			}
+
+			fmt.Printf("Evaluating: %s\n", expression)
+			result, err := client.Evaluate("", expression)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error evaluating: %v\n", err)
+				os.Exit(1)
+			}
+
+			fmt.Printf("Result: %v\n", result)
+		},
+	})
+
 	rootCmd.Version = version
 	rootCmd.SetVersionTemplate("Clicker v{{.Version}}\n")
 
