@@ -256,11 +256,11 @@ Or on timeout:
 If you want to implement your own extension commands, here's where to look:
 
 **Client side** (sending the command):
-- [`clients/javascript/src/vibe.ts#L69`](https://github.com/vibium/vibium/blob/66b5bc3/clients/javascript/src/vibe.ts#L69) — calls `client.send('vibium:find', { ... })`
+- [`clients/javascript/src/vibe.ts#L69`](https://github.com/VibiumDev/vibium/blob/66b5bc3/clients/javascript/src/vibe.ts#L69) — calls `client.send('vibium:find', { ... })`
 
 **Server side** (handling the command):
-- [`clicker/internal/proxy/router.go#L150`](https://github.com/vibium/vibium/blob/66b5bc3/clicker/internal/proxy/router.go#L150) — switch case routes `vibium:find` to handler
-- [`clicker/internal/proxy/router.go#L303`](https://github.com/vibium/vibium/blob/66b5bc3/clicker/internal/proxy/router.go#L303) — `handleVibiumFind()` implements the logic
+- [`clicker/internal/proxy/router.go#L150`](https://github.com/VibiumDev/vibium/blob/66b5bc3/clicker/internal/proxy/router.go#L150) — switch case routes `vibium:find` to handler
+- [`clicker/internal/proxy/router.go#L303`](https://github.com/VibiumDev/vibium/blob/66b5bc3/clicker/internal/proxy/router.go#L303) — `handleVibiumFind()` implements the logic
 
 The pattern is:
 1. Client sends a JSON message with `method: "yourprefix:commandname"`
