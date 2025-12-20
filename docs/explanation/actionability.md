@@ -70,7 +70,7 @@ An element is stable if its position hasn't changed over 50ms. This catches CSS 
 // Wait 50ms, then check again
 // Stable = (position at T) equals (position at T+50ms)
 ```
-<sub>[`actionability.go#L70`](https://github.com/VibiumDev/vibium/blob/66b5bc3/clicker/internal/features/actionability.go#L70)</sub>
+<sub>[`CheckStable#L70`](https://github.com/VibiumDev/vibium/blob/66b5bc3/clicker/internal/features/actionability.go#L70) · [`getBoundingBox#L366`](https://github.com/VibiumDev/vibium/blob/66b5bc3/clicker/internal/features/actionability.go#L366)</sub>
 
 The Go code runs `getBoundingClientRect()` twice with a 50ms gap and compares the results.
 
