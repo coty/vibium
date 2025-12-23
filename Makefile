@@ -1,4 +1,4 @@
-.PHONY: all build build-go build-js build-all-platforms package package-platforms package-main deps clean clean-bin clean-js clean-packages clean-cache clean-all serve test test-cli test-js test-mcp double-tap help
+.PHONY: all build build-go build-js build-all-platforms package package-platforms package-main install-browser deps clean clean-bin clean-js clean-packages clean-cache clean-all serve test test-cli test-js test-mcp double-tap help
 
 # Default target
 all: build
@@ -47,6 +47,10 @@ package-main: build-js
 # Build all packages for npm publishing
 package: package-platforms package-main
 	@echo "All packages ready for publishing!"
+
+# Install Chrome for Testing (required for tests)
+install-browser: build-go
+	./clicker/bin/clicker install
 
 # Install npm dependencies (skip if node_modules exists)
 deps:
@@ -121,6 +125,7 @@ help:
 	@echo "  make package            - Build all packages for npm publishing"
 	@echo "  make package-platforms  - Build platform packages only"
 	@echo "  make package-main       - Build main package only"
+	@echo "  make install-browser    - Install Chrome for Testing"
 	@echo "  make deps               - Install npm dependencies"
 	@echo "  make serve              - Start proxy server on :9515"
 	@echo "  make test               - Run all tests (CLI + JS + MCP)"
