@@ -366,6 +366,13 @@ Provide a summary:
 - (list any items requiring human attention)
 ```
 
+## Versioning
+
+- Java client version should align with JS client on release
+- Check `clients/javascript/package.json` for current JS version
+- Update `clients/java/pom.xml` version to match (without `-SNAPSHOT` suffix for releases)
+- Keep `-SNAPSHOT` suffix during development
+
 ## Notes
 
 - This skill does NOT handle async Java API (CompletableFuture) - that's a future enhancement

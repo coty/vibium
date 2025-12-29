@@ -4,7 +4,13 @@ Java client library for Vibium browser automation.
 
 ## Status
 
-Not yet implemented. See `~/.claude/plans/vibium-java-client-maintenance.md` for implementation plan.
+Implemented. Synced with JavaScript client.
+
+## Versioning
+
+- Keep `-SNAPSHOT` suffix during development
+- On release, align version with JavaScript client (`clients/javascript/package.json`)
+- Example: If JS is `0.1.2`, Java releases as `0.1.2`
 
 ## Sync with JavaScript Client
 
