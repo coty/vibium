@@ -96,13 +96,11 @@ public class Element {
      * @return Text content (trimmed)
      */
     public String text() {
-        String script = String.format(
-            "(selector) => { " +
-            "  const el = document.querySelector(selector); " +
-            "  return el ? (el.textContent || '').trim() : null; " +
-            "}",
-            selector
-        );
+        String script = """
+            (selector) => {
+                const el = document.querySelector(selector);
+                return el ? (el.textContent || '').trim() : null;
+            }""";
 
         Map<String, Object> params = new HashMap<>();
         params.put("functionDeclaration", script);
@@ -128,11 +126,11 @@ public class Element {
      * @return Attribute value, or null if not present
      */
     public String getAttribute(String name) {
-        String script =
-            "(selector, attrName) => { " +
-            "  const el = document.querySelector(selector); " +
-            "  return el ? el.getAttribute(attrName) : null; " +
-            "}";
+        String script = """
+            (selector, attrName) => {
+                const el = document.querySelector(selector);
+                return el ? el.getAttribute(attrName) : null;
+            }""";
 
         Map<String, Object> params = new HashMap<>();
         params.put("functionDeclaration", script);
@@ -160,18 +158,18 @@ public class Element {
      * @return Bounding box with x, y, width, height
      */
     public BoundingBox boundingBox() {
-        String script =
-            "(selector) => { " +
-            "  const el = document.querySelector(selector); " +
-            "  if (!el) return null; " +
-            "  const rect = el.getBoundingClientRect(); " +
-            "  return JSON.stringify({ " +
-            "    x: rect.x, " +
-            "    y: rect.y, " +
-            "    width: rect.width, " +
-            "    height: rect.height " +
-            "  }); " +
-            "}";
+        String script = """
+            (selector) => {
+                const el = document.querySelector(selector);
+                if (!el) return null;
+                const rect = el.getBoundingClientRect();
+                return JSON.stringify({
+                    x: rect.x,
+                    y: rect.y,
+                    width: rect.width,
+                    height: rect.height
+                });
+            }""";
 
         Map<String, Object> params = new HashMap<>();
         params.put("functionDeclaration", script);

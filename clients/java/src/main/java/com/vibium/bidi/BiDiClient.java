@@ -128,6 +128,19 @@ public class BiDiClient {
     }
 
     /**
+     * Send a command and convert the result to a specific type.
+     *
+     * @param method BiDi method name
+     * @param params Command parameters
+     * @param resultType The class to convert the result to
+     * @return The result converted to the specified type
+     */
+    public <T> T send(String method, Map<String, Object> params, Class<T> resultType) {
+        JsonObject result = send(method, params);
+        return gson.fromJson(result, resultType);
+    }
+
+    /**
      * Close the connection.
      */
     public void close() {
