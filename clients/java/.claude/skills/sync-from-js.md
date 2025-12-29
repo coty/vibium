@@ -134,9 +134,11 @@ For each gap, generate idiomatic Java code following these conventions:
 
 **Patterns:**
 - Use Java 17 records for immutable data types
-- Use builder pattern for option classes
+- Use builder pattern for option classes with static factory methods (e.g., `FindOptions.withTimeout(5000)`)
 - Implement AutoCloseable for Vibe
 - Use CompletableFuture only if async API requested (default: sync)
+- Use text blocks (triple quotes) for embedded JavaScript in Element.java
+- BiDiClient should have type-safe `<T> T send(method, params, Class<T>)` method
 
 **Example Translations:**
 
@@ -148,9 +150,13 @@ export interface FindOptions {
 ```
 
 ```java
-// Java - Builder pattern
+// Java - Builder pattern with static factory
 public class FindOptions {
     private Integer timeout;
+
+    public static FindOptions withTimeout(int timeout) {
+        return new FindOptions().timeout(timeout);
+    }
 
     public FindOptions timeout(int timeout) {
         this.timeout = timeout;
