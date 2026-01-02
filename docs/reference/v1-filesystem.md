@@ -1,6 +1,6 @@
 # Vibium V1 File System Layout
 
-> **Note:** This document is actively maintained until V1 ships, then archived as a historical reference.
+> **Archived:** V1 shipped December 2025. This document is preserved as historical reference.
 
 ```
 vibium/

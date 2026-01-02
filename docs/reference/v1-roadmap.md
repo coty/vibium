@@ -1,5 +1,7 @@
 # Vibium V1 Roadmap
 
+> **Archived:** V1 shipped December 2025. This document is preserved as historical reference.
+
 **Target: 2 weeks to MVP**
 **Scope: Clicker (Go) + JS/TS Client (async + sync) + MCP Server**
 **Pitch: "Browser automation without the drama."**
