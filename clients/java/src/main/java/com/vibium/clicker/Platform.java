@@ -77,4 +77,30 @@ public class Platform {
     public static String getBinaryName() {
         return getOS() == OS.WINDOWS ? "clicker.exe" : "clicker";
     }
+
+    /**
+     * Get the platform-specific cache directory for Vibium.
+     * - macOS: ~/Library/Caches/vibium
+     * - Linux: ~/.cache/vibium (or XDG_CACHE_HOME/vibium)
+     * - Windows: %LOCALAPPDATA%/vibium
+     */
+    public static java.nio.file.Path getCacheDir() {
+        String home = System.getProperty("user.home");
+        switch (getOS()) {
+            case DARWIN:
+                return java.nio.file.Paths.get(home, "Library", "Caches", "vibium");
+            case WINDOWS:
+                String localAppData = System.getenv("LOCALAPPDATA");
+                if (localAppData != null && !localAppData.isEmpty()) {
+                    return java.nio.file.Paths.get(localAppData, "vibium");
+                }
+                return java.nio.file.Paths.get(home, "AppData", "Local", "vibium");
+            default: // LINUX
+                String xdgCache = System.getenv("XDG_CACHE_HOME");
+                if (xdgCache != null && !xdgCache.isEmpty()) {
+                    return java.nio.file.Paths.get(xdgCache, "vibium");
+                }
+                return java.nio.file.Paths.get(home, ".cache", "vibium");
+        }
+    }
 }

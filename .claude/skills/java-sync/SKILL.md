@@ -1,3 +1,8 @@
+---
+name: java-sync
+description: Synchronizes the Vibium Java client with the JavaScript/TypeScript client. Use when syncing Java API, ensuring Java parity with JS, or when the user runs /java-sync.
+---
+
 # Java Client Sync Skill
 
 Synchronize the Vibium Java client with the JavaScript/TypeScript client.
@@ -8,7 +13,21 @@ Invoke with: `/java-sync`
 
 ## Description
 
-This skill analyzes the JavaScript client API and ensures the Java client has matching functionality. It detects gaps, generates Java code, and helps maintain API parity between the two client libraries.
+This skill analyzes the JavaScript client API and ensures the Java client has matching functionality. It detects gaps, generates Java code, and helps maintain API parity across all client libraries (JS, Python, Java).
+
+## Reference Clients
+
+When syncing, also check the Python client for implementation patterns:
+
+| Python Source | Purpose |
+|---------------|---------|
+| `clients/python/src/vibium/browser.py` | Browser launch |
+| `clients/python/src/vibium/vibe.py` | Vibe class |
+| `clients/python/src/vibium/element.py` | Element class |
+| `clients/python/src/vibium/client.py` | BiDi client |
+| `clients/python/src/vibium/clicker.py` | Clicker process |
+
+The Python client may have features not yet in JS, or vice versa. The goal is parity across all three.
 
 ## File Mapping
 
@@ -384,4 +403,6 @@ Provide a summary:
 - This skill does NOT handle async Java API (CompletableFuture) - that's a future enhancement
 - Complex architectural changes may need manual intervention
 - The sync API in JS (`browserSync`, `VibeSync`) maps to the default Java API (Java is sync by default)
+- Python also has both sync (`browser_sync`) and async (`browser`) APIs - Java mirrors the sync variant
 - BiDi protocol layer changes require careful testing
+- Check `CONTRIBUTING.md` for usage examples across all client libraries

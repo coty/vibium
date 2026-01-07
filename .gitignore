@@ -66,4 +66,7 @@ venv/
 packages/python/*/src/*/bin/clicker
 packages/python/*/src/*/bin/clicker.exe
 
+# Java
+clients/java/target/
+
 .claude/settings.local.json

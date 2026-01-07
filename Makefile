@@ -1,4 +1,4 @@
-.PHONY: all build build-go build-js build-all-platforms package package-platforms package-main package-python-platforms package-python install-browser deps clean clean-bin clean-js clean-packages clean-python-packages clean-cache clean-all serve test test-cli test-js test-mcp test-python double-tap help
+.PHONY: all build build-go build-js build-java build-all-platforms package package-platforms package-main package-python-platforms package-python package-java install-browser deps clean clean-bin clean-js clean-java clean-packages clean-python-packages clean-java-packages clean-cache clean-all serve test test-cli test-js test-mcp test-python test-java double-tap help
 
 # Default target
 all: build
@@ -7,12 +7,16 @@ all: build
 build: build-go build-js
 
 # Build clicker binary
-build-go: deps
+build-go:
 	cd clicker && go build -o bin/clicker ./cmd/clicker
 
 # Build JS client
 build-js: deps
 	cd clients/javascript && npm run build
+
+# Build Java client
+build-java:
+	cd clients/java && mvn compile -q
 
 # Cross-compile clicker for all platforms (static binaries)
 # Output: clicker/bin/clicker-{os}-{arch}[.exe]
@@ -29,6 +33,7 @@ build-all-platforms:
 # Copy binaries to platform packages for npm publishing
 package-platforms: build-all-platforms
 	@echo "Copying binaries to platform packages..."
+	mkdir -p packages/linux-x64/bin packages/linux-arm64/bin packages/darwin-x64/bin packages/darwin-arm64/bin packages/win32-x64/bin
 	cp clicker/bin/clicker-linux-amd64 packages/linux-x64/bin/clicker
 	cp clicker/bin/clicker-linux-arm64 packages/linux-arm64/bin/clicker
 	cp clicker/bin/clicker-darwin-amd64 packages/darwin-x64/bin/clicker
@@ -51,6 +56,7 @@ package: package-platforms package-main
 # Copy binaries to Python platform packages
 package-python-platforms: build-all-platforms
 	@echo "Copying binaries to Python platform packages..."
+	mkdir -p packages/python/vibium_linux_x64/src/vibium_linux_x64/bin packages/python/vibium_linux_arm64/src/vibium_linux_arm64/bin packages/python/vibium_darwin_x64/src/vibium_darwin_x64/bin packages/python/vibium_darwin_arm64/src/vibium_darwin_arm64/bin packages/python/vibium_win32_x64/src/vibium_win32_x64/bin
 	cp clicker/bin/clicker-linux-amd64 packages/python/vibium_linux_x64/src/vibium_linux_x64/bin/clicker
 	cp clicker/bin/clicker-linux-arm64 packages/python/vibium_linux_arm64/src/vibium_linux_arm64/bin/clicker
 	cp clicker/bin/clicker-darwin-amd64 packages/python/vibium_darwin_x64/src/vibium_darwin_x64/bin/clicker
@@ -69,6 +75,13 @@ package-python: package-python-platforms
 	cd clients/python && pip wheel . -w dist --no-deps
 	@echo "Done. Python wheels:"
 	@ls -lh packages/python/*/dist/*.whl clients/python/dist/*.whl 2>/dev/null || true
+
+# Build Java JAR with embedded clicker binaries (uses shared packages/ directory)
+package-java: package-platforms
+	@echo "Building Java JAR with embedded binaries..."
+	cd clients/java && mvn package -q -DskipTests
+	@echo "Done. Java JARs:"
+	@ls -lh clients/java/target/*.jar
 
 # Install Chrome for Testing (required for tests)
 install-browser: build-go
@@ -114,6 +127,11 @@ test-python: package-python-platforms
 		pip install -q -e ../../packages/python/vibium_darwin_arm64 -e . && \
 		python tests/test_basic.py
 
+# Run Java client tests
+test-java: build-go
+	@echo "━━━ Java Client Tests ━━━"
+	cd clients/java && mvn test -q
+
 # Kill zombie Chrome and chromedriver processes
 double-tap:
 	@echo "Killing zombie processes..."
@@ -130,6 +148,10 @@ clean-bin:
 clean-js:
 	rm -rf clients/javascript/dist
 
+# Clean Java build
+clean-java:
+	cd clients/java && mvn clean -q
+
 # Clean built npm packages
 clean-packages:
 	rm -f packages/*/bin/clicker packages/*/bin/clicker.exe
@@ -140,13 +162,17 @@ clean-python-packages:
 	rm -f packages/python/*/src/*/bin/clicker packages/python/*/src/*/bin/clicker.exe
 	rm -rf packages/python/*/dist clients/python/dist
 
+# Clean Java built JARs
+clean-java-packages:
+	rm -rf clients/java/target
+
 # Clean cached Chrome for Testing
 clean-cache:
 	rm -rf ~/Library/Caches/vibium/chrome-for-testing
 	rm -rf ~/.cache/vibium/chrome-for-testing
 
-# Clean everything (binaries + JS dist + packages + Python + cache)
-clean-all: clean-bin clean-js clean-packages clean-python-packages clean-cache
+# Clean everything (binaries + JS dist + packages + Python + Java + cache)
+clean-all: clean-bin clean-js clean-packages clean-python-packages clean-java-packages clean-cache
 
 # Alias for clean-bin + clean-js
 clean: clean-bin clean-js
@@ -159,6 +185,7 @@ help:
 	@echo "  make                    - Build everything (default)"
 	@echo "  make build-go           - Build clicker binary"
 	@echo "  make build-js           - Build JS client"
+	@echo "  make build-java         - Build Java client"
 	@echo "  make build-all-platforms - Cross-compile clicker for all platforms"
 	@echo ""
 	@echo "Package (npm):"
@@ -170,12 +197,16 @@ help:
 	@echo "  make package-python     - Build all Python wheels"
 	@echo "  make package-python-platforms - Copy binaries to Python packages"
 	@echo ""
+	@echo "Package (Java):"
+	@echo "  make package-java       - Build Java JAR with embedded binaries"
+	@echo ""
 	@echo "Test:"
 	@echo "  make test               - Run all tests (CLI + JS + MCP)"
 	@echo "  make test-cli           - Run CLI tests only"
 	@echo "  make test-js            - Run JS library tests only"
 	@echo "  make test-mcp           - Run MCP server tests only"
 	@echo "  make test-python        - Run Python client tests"
+	@echo "  make test-java          - Run Java client tests"
 	@echo ""
 	@echo "Other:"
 	@echo "  make install-browser    - Install Chrome for Testing"
@@ -185,8 +216,10 @@ help:
 	@echo ""
 	@echo "Clean:"
 	@echo "  make clean              - Clean binaries and JS dist"
+	@echo "  make clean-java         - Clean Java build"
 	@echo "  make clean-packages     - Clean built npm packages"
 	@echo "  make clean-python-packages - Clean built Python packages"
+	@echo "  make clean-java-packages - Clean Java JARs and platform binaries"
 	@echo "  make clean-cache        - Clean cached Chrome for Testing"
 	@echo "  make clean-all          - Clean everything"
 	@echo ""

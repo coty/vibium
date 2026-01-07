@@ -16,6 +16,7 @@ If you prefer to develop directly on your host machine, follow the steps below.
 - Go 1.21+
 - Node.js 18+
 - Python 3.9+ (for Python client development)
+- Java 17+ and Maven (for Java client development)
 - GitHub CLI (optional, for managing issues/PRs from terminal):
   - macOS: `brew install gh`
   - Linux: `sudo apt install gh` or `sudo dnf install gh`
@@ -201,6 +202,69 @@ async def main():
     await vibe.quit()
 
 asyncio.run(main())
+```
+
+---
+
+## Using the Java Client
+
+The Java client provides a synchronous API (Java's natural model).
+
+### Setup
+
+For local development, build with Maven:
+
+```bash
+cd clients/java
+mvn compile
+```
+
+### Example
+
+```java
+import com.vibium.Browser;
+import com.vibium.Vibe;
+import com.vibium.Element;
+
+public class Example {
+    public static void main(String[] args) {
+        try (Vibe vibe = Browser.launch()) {
+            vibe.go("https://example.com");
+
+            Element heading = vibe.find("h1");
+            System.out.println(heading.text());
+
+            byte[] screenshot = vibe.screenshot();
+            java.nio.file.Files.write(
+                java.nio.file.Path.of("screenshot.png"),
+                screenshot
+            );
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+### With Options
+
+```java
+import com.vibium.Browser;
+import com.vibium.LaunchOptions;
+import com.vibium.Vibe;
+
+try (Vibe vibe = Browser.launch(new LaunchOptions().headless(true))) {
+    vibe.go("https://example.com");
+    // ...
+}
+```
+
+### Running Tests
+
+```bash
+make test-java
+# or directly:
+cd clients/java && mvn test
 ```
 
 ---

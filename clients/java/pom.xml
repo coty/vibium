@@ -63,6 +63,23 @@
     </dependencies>
 
     <build>
+        <!-- Include platform-specific clicker binaries as resources -->
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <!-- Platform binaries from shared packages/ directory (populated by make package-platforms) -->
+            <resource>
+                <directory>${project.basedir}/../../packages</directory>
+                <includes>
+                    <include>darwin-arm64/bin/clicker</include>
+                    <include>darwin-x64/bin/clicker</include>
+                    <include>linux-x64/bin/clicker</include>
+                    <include>linux-arm64/bin/clicker</include>
+                    <include>win32-x64/bin/clicker.exe</include>
+                </includes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
