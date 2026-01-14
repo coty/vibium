@@ -5,7 +5,7 @@ description: Synchronize the Vibium Java client with the JavaScript/TypeScript a
 
 # Java Client Sync Skill
 
-Synchronize the Vibium Java client with the JavaScript/TypeScript client.
+Synchronize the Vibium Java client with the JavaScript/TypeScript and Python clients.
 
 ## Description
 
@@ -268,4 +268,3 @@ Provide a summary:
 - Check `CONTRIBUTING.md` for usage examples across all client libraries
 - Common pitfalls: nullable JS fields that need Optional/nullable handling in Java, mismatch between JS error names and Java exception classes, and record vs builder usage for mutable options.
 - See `references/parity-rules.md` for stricter mapping rules.
-- See `references/packaging-checklist.md` for packaging steps once changes are complete.
