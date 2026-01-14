@@ -1,15 +1,11 @@
 ---
 name: java-sync
-description: Synchronizes the Vibium Java client with the JavaScript/TypeScript client. Use when syncing Java API, ensuring Java parity with JS, or when the user runs /java-sync.
+description: Synchronize the Vibium Java client with the JavaScript/TypeScript and Python clients for API parity. Use when syncing the Java API, aligning Java to JS/TS and Python, or when the user runs /java-sync.
 ---
 
 # Java Client Sync Skill
 
 Synchronize the Vibium Java client with the JavaScript/TypeScript client.
-
-## Trigger
-
-Invoke with: `/java-sync`
 
 ## Description
 
@@ -91,44 +87,15 @@ For the JavaScript client, extract:
 3. **Type definitions** (interfaces, type aliases)
 4. **Error classes** and their properties
 
-Create a structured inventory like:
+Create a structured inventory like the template in `references/api-inventory.md`.
 
-```
-## JavaScript API
+### Step 3: Decide Sync Direction
 
-### browser
-- launch(options?: LaunchOptions): Promise<Vibe>
+- If JS/TS changed most recently, use it as the baseline.
+- If Python has features missing in JS/TS, use Python as the baseline and note any JS/TS gaps.
+- When in doubt, prioritize the client with the newest public API change.
 
-### Vibe
-- go(url: string): Promise<void>
-- screenshot(): Promise<Buffer>
-- evaluate<T>(script: string): Promise<T>
-- find(selector: string, options?: FindOptions): Promise<Element>
-- quit(): Promise<void>
-
-### Element
-- click(options?: ActionOptions): Promise<void>
-- type(text: string, options?: ActionOptions): Promise<void>
-- text(): Promise<string>
-- getAttribute(name: string): Promise<string | null>
-- boundingBox(): Promise<BoundingBox>
-- info: ElementInfo (readonly)
-
-### Types
-- LaunchOptions: { headless?: boolean, port?: number, executablePath?: string }
-- FindOptions: { timeout?: number }
-- ActionOptions: { timeout?: number }
-- BoundingBox: { x: number, y: number, width: number, height: number }
-- ElementInfo: { tag: string, text: string, box: BoundingBox }
-
-### Errors
-- ConnectionError(url: string, cause?: Error)
-- TimeoutError(selector: string, timeout: number, reason?: string)
-- ElementNotFoundError(selector: string)
-- BrowserCrashedError(exitCode: number, output?: string)
-```
-
-### Step 3: Compare and Identify Gaps
+### Step 4: Compare and Identify Gaps
 
 If the Java client exists, compare APIs and create a gap analysis:
 
@@ -138,11 +105,10 @@ If the Java client exists, compare APIs and create a gap analysis:
 | Vibe.go() | ✅ | ? | Check/Create |
 | Vibe.find() | ✅ | ? | Check/Create |
 | Element.click() | ✅ | ? | Check/Create |
-| ... | ... | ... | ... |
 
 If the Java client doesn't exist, all features need to be created.
 
-### Step 4: Generate Missing Code
+### Step 5: Generate Missing Code
 
 For each gap, generate idiomatic Java code following these conventions:
 
@@ -234,35 +200,11 @@ public class TimeoutException extends VibiumException {
 }
 ```
 
-### Step 5: Generate Matching Tests
+### Step 6: Generate Matching Tests
 
 For each JS test in `tests/js/`, generate a corresponding Java JUnit 5 test.
 
-**Test Translation Example:**
-
-```javascript
-// tests/js/sync-api.test.js
-test('vibe.go() navigates to URL (sync)', () => {
-  const vibe = browserSync.launch({ headless: true });
-  try {
-    vibe.go('https://the-internet.herokuapp.com/');
-    assert.ok(true);
-  } finally {
-    vibe.quit();
-  }
-});
-```
-
-```java
-// tests/java/ApiTest.java
-@Test
-void goNavigatesToUrl() {
-    try (Vibe vibe = Browser.launch(new LaunchOptions().headless(true))) {
-        vibe.go("https://the-internet.herokuapp.com/");
-        // If we get here without exception, navigation worked
-    }
-}
-```
+See `references/test-translation.md` for example translations and a full Java test skeleton.
 
 **Test conventions for Java:**
 - Use JUnit 5 (`@Test`, `@BeforeAll`, `@AfterAll`)
@@ -271,95 +213,13 @@ void goNavigatesToUrl() {
 - Assertions via `org.junit.jupiter.api.Assertions`
 - Same test site: `https://the-internet.herokuapp.com/`
 
-**Java test structure:**
+### Step 7: Apply Changes
 
-```java
-package com.vibium;
+Summarize proposed changes and confirm with the user before applying edits. Apply approved changes to:
+- Source: `clients/java/src/main/java/com/vibium/`
+- Tests: `tests/java/`
 
-import org.junit.jupiter.api.*;
-import static org.junit.jupiter.api.Assertions.*;
-
-class ApiTest {
-
-    @Test
-    void launchAndQuit() {
-        try (Vibe vibe = Browser.launch(new LaunchOptions().headless(true))) {
-            assertNotNull(vibe);
-        }
-    }
-
-    @Test
-    void goNavigatesToUrl() {
-        try (Vibe vibe = Browser.launch(new LaunchOptions().headless(true))) {
-            vibe.go("https://the-internet.herokuapp.com/");
-        }
-    }
-
-    @Test
-    void screenshotReturnsPngBuffer() {
-        try (Vibe vibe = Browser.launch(new LaunchOptions().headless(true))) {
-            vibe.go("https://the-internet.herokuapp.com/");
-            byte[] screenshot = vibe.screenshot();
-
-            assertNotNull(screenshot);
-            assertTrue(screenshot.length > 1000, "Screenshot should have reasonable size");
-
-            // Check PNG magic bytes
-            assertEquals((byte) 0x89, screenshot[0]);
-            assertEquals((byte) 0x50, screenshot[1]);
-            assertEquals((byte) 0x4E, screenshot[2]);
-            assertEquals((byte) 0x47, screenshot[3]);
-        }
-    }
-
-    @Test
-    void findLocatesElement() {
-        try (Vibe vibe = Browser.launch(new LaunchOptions().headless(true))) {
-            vibe.go("https://the-internet.herokuapp.com/");
-            Element heading = vibe.find("h1.heading");
-
-            assertNotNull(heading);
-            assertNotNull(heading.getInfo());
-            assertTrue(heading.getInfo().tag().equalsIgnoreCase("h1"));
-        }
-    }
-
-    @Test
-    void clickWorks() {
-        try (Vibe vibe = Browser.launch(new LaunchOptions().headless(true))) {
-            vibe.go("https://the-internet.herokuapp.com/");
-            Element link = vibe.find("a[href=\"/add_remove_elements/\"]");
-            link.click();
-
-            Element heading = vibe.find("h3");
-            assertTrue(heading.getInfo().text().contains("Add/Remove Elements"));
-        }
-    }
-
-    @Test
-    void typeEntersText() {
-        try (Vibe vibe = Browser.launch(new LaunchOptions().headless(true))) {
-            vibe.go("https://the-internet.herokuapp.com/inputs");
-            Element input = vibe.find("input");
-            input.type("12345");
-
-            String value = vibe.evaluate("return document.querySelector('input').value;");
-            assertEquals("12345", value);
-        }
-    }
-}
-```
-
-### Step 6: Apply Changes
-
-1. Show the user a summary of proposed changes
-2. For each file to be created/modified, show the diff
-3. Ask for approval before applying
-4. Apply approved changes to:
-   - Source: `clients/java/src/main/java/com/vibium/`
-   - Tests: `tests/java/`
-
-### Step 7: Verify
+### Step 8: Verify
 
 If the Java project has a `pom.xml`, run:
 
@@ -369,7 +229,7 @@ cd clients/java && mvn compile
 
 Report any compilation errors for manual fixing.
 
-### Step 7: Report
+### Step 9: Report
 
 Provide a summary:
 
@@ -406,3 +266,6 @@ Provide a summary:
 - Python also has both sync (`browser_sync`) and async (`browser`) APIs - Java mirrors the sync variant
 - BiDi protocol layer changes require careful testing
 - Check `CONTRIBUTING.md` for usage examples across all client libraries
+- Common pitfalls: nullable JS fields that need Optional/nullable handling in Java, mismatch between JS error names and Java exception classes, and record vs builder usage for mutable options.
+- See `references/parity-rules.md` for stricter mapping rules.
+- See `references/packaging-checklist.md` for packaging steps once changes are complete.
