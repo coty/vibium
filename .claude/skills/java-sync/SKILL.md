@@ -231,6 +231,43 @@ If this is a new Java client setup, ensure the `pom.xml` is configured correctly
 
 Report any compilation errors for manual fixing.
 
+### Step 8.5: Update Makefile (if needed)
+
+If the root `Makefile` doesn't have Java targets, add them for consistency with JavaScript and Python clients:
+
+```makefile
+# Build Java client
+build-java:
+	cd clients/java && mvn clean compile
+
+# Test Java client  
+test-java:
+	cd clients/java && mvn test
+
+# Package Java client
+package-java:
+	cd clients/java && mvn package
+
+# Clean Java artifacts
+clean-java:
+	cd clients/java && mvn clean
+```
+
+Update the main targets to include Java:
+
+```makefile
+# Build everything (Go + JS + Java)
+build: build-go build-js build-java
+
+# Run all tests
+test: build test-cli test-js test-java test-mcp
+
+# Clean everything
+clean-all: clean-bin clean-js clean-java clean-packages clean-cache
+```
+
+Update the `.PHONY` declaration at the top to include new Java targets.
+
 ### Step 9: Report
 
 Provide a summary:
