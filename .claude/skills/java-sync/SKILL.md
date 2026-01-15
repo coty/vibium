@@ -116,6 +116,53 @@ For each gap, generate idiomatic Java code following these conventions:
 - Classes: PascalCase matching JS (Browser, Vibe, Element)
 - Methods: camelCase matching JS (go, screenshot, find)
 - Parameters: camelCase
+- Constants: UPPER_SNAKE_CASE with `long` type for timeouts (e.g., `START_TIMEOUT_MS`)
+
+**Code Quality Standards:**
+
+1. **JavaDoc Documentation** - Every public class and method must have complete JavaDoc:
+   - Class-level: Description and usage example in `<pre>{@code ...}</pre>` block
+   - Method-level: Description, `@param` for each parameter, `@return` for non-void methods
+   - Use blank line after class declaration before fields
+
+2. **Error Handling** - Always clean up resources on failure:
+   ```java
+   // In Browser.launch() - clean up process if connection fails
+   try {
+       BiDiClient client = BiDiClient.connect(url);
+       return new Vibe(client, process);
+   } catch (Exception e) {
+       process.stop();  // IMPORTANT: cleanup on failure
+       throw e;
+   }
+   ```
+
+3. **Options Classes** - Use primitive types with defaults, not boxed types:
+   ```java
+   private boolean headless = false;      // NOT: private Boolean headless;
+   private Integer port = null;           // Integer OK for truly optional
+   public boolean isHeadless() { ... }    // NOT: getHeadless() returning Boolean
+   ```
+
+4. **BiDi Types** - Create ALL protocol types as records, including:
+   - `BiDiCommand` - Command sent to server
+   - `BiDiResponse` - Response from server (with type, result, error fields)
+   - `BiDiEvent` - Unsolicited event from server
+   - `BiDiError` - Error details
+
+5. **Logging** - Use SLF4J with appropriate levels:
+   - `log.debug()` for operational details
+   - `log.info()` for significant events (browser launched, etc.)
+   - `log.trace()` for verbose output (process stdout lines)
+   - `log.warn()` for unexpected but recoverable situations
+   - `log.error()` for failures
+
+6. **Code Organization**:
+   - Blank line after package declaration
+   - Blank line after imports
+   - Blank line after class declaration (before fields)
+   - Group related methods together
+   - Private helper methods at the end of the class
 
 **Patterns:**
 - Use Java 17 records for immutable data types
@@ -124,8 +171,70 @@ For each gap, generate idiomatic Java code following these conventions:
 - Use CompletableFuture only if async API requested (default: sync)
 - Use text blocks (triple quotes) for embedded JavaScript in Element.java
 - BiDiClient should have type-safe `<T> T send(method, params, Class<T>)` method
+- Extract complex logic into private helper methods (e.g., `waitForPort()` in ClickerProcess)
 
 **Example Translations:**
+
+```typescript
+// TypeScript
+export interface LaunchOptions {
+  headless?: boolean;
+  port?: number;
+  executablePath?: string;
+}
+```
+
+```java
+// Java - Options with defaults and proper JavaDoc
+/**
+ * Options for launching a browser.
+ */
+public class LaunchOptions {
+
+    private boolean headless = false;
+    private Integer port = null;
+    private String executablePath = null;
+
+    /**
+     * Run browser in headless mode (no visible window).
+     * Default: false (browser is visible).
+     */
+    public LaunchOptions headless(boolean headless) {
+        this.headless = headless;
+        return this;
+    }
+
+    /**
+     * Port for the WebSocket server.
+     * Default: auto-select available port.
+     */
+    public LaunchOptions port(int port) {
+        this.port = port;
+        return this;
+    }
+
+    /**
+     * Path to the clicker binary.
+     * Default: auto-detect from PATH or environment.
+     */
+    public LaunchOptions executablePath(String path) {
+        this.executablePath = path;
+        return this;
+    }
+
+    public boolean isHeadless() {
+        return headless;
+    }
+
+    public Integer getPort() {
+        return port;
+    }
+
+    public String getExecutablePath() {
+        return executablePath;
+    }
+}
+```
 
 ```typescript
 // TypeScript
@@ -135,19 +244,40 @@ export interface FindOptions {
 ```
 
 ```java
-// Java - Builder pattern with static factory
+// Java - Builder pattern with static factory and JavaDoc
+/**
+ * Options for finding elements.
+ */
 public class FindOptions {
-    private Integer timeout;
 
+    private Integer timeout = null;
+
+    /**
+     * Create options with the specified timeout.
+     *
+     * @param timeout Timeout in milliseconds
+     * @return New FindOptions instance
+     */
     public static FindOptions withTimeout(int timeout) {
         return new FindOptions().timeout(timeout);
     }
 
+    /**
+     * Set timeout for finding element.
+     *
+     * @param timeout Timeout in milliseconds
+     * @return This instance for chaining
+     */
     public FindOptions timeout(int timeout) {
         this.timeout = timeout;
         return this;
     }
 
+    /**
+     * Get the timeout value.
+     *
+     * @return Timeout in milliseconds, or null if not set
+     */
     public Integer getTimeout() {
         return timeout;
     }
@@ -155,18 +285,38 @@ public class FindOptions {
 ```
 
 ```typescript
-// TypeScript
-export interface BoundingBox {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+// TypeScript - BiDi types
+export interface BiDiResponse {
+  id: number;
+  type: 'success' | 'error';
+  result?: unknown;
+  error?: BiDiError;
 }
 ```
 
 ```java
-// Java - Record (immutable)
-public record BoundingBox(double x, double y, double width, double height) {}
+// Java - ALL BiDi types as records
+package com.vibium.bidi.types;
+
+/**
+ * A BiDi protocol command.
+ */
+public record BiDiCommand(int id, String method, Map<String, Object> params) {}
+
+/**
+ * A BiDi protocol response.
+ */
+public record BiDiResponse(int id, String type, Object result, BiDiError error) {}
+
+/**
+ * A BiDi protocol event (unsolicited message from server).
+ */
+public record BiDiEvent(String method, Map<String, Object> params) {}
+
+/**
+ * A BiDi protocol error.
+ */
+public record BiDiError(String error, String message, String stacktrace) {}
 ```
 
 ```typescript
@@ -183,12 +333,23 @@ export class TimeoutError extends Error {
 ```
 
 ```java
-// Java - Exception class
+// Java - Exception class with full JavaDoc
+/**
+ * Thrown when a wait operation times out.
+ */
 public class TimeoutException extends VibiumException {
+
     private final String selector;
     private final int timeout;
     private final String reason;
 
+    /**
+     * Create a timeout exception.
+     *
+     * @param selector The CSS selector that timed out
+     * @param timeout The timeout value in milliseconds
+     * @param reason Optional reason for the timeout
+     */
     public TimeoutException(String selector, int timeout, String reason) {
         super(formatMessage(selector, timeout, reason));
         this.selector = selector;
@@ -196,9 +357,38 @@ public class TimeoutException extends VibiumException {
         this.reason = reason;
     }
 
-    // Getters...
+    /**
+     * Create a timeout exception without a reason.
+     *
+     * @param selector The CSS selector that timed out
+     * @param timeout The timeout value in milliseconds
+     */
+    public TimeoutException(String selector, int timeout) {
+        this(selector, timeout, null);
+    }
+
+    private static String formatMessage(String selector, int timeout, String reason) {
+        if (reason != null) {
+            return String.format("Timeout after %dms waiting for '%s': %s", timeout, selector, reason);
+        }
+        return String.format("Timeout after %dms waiting for '%s'", timeout, selector);
+    }
+
+    /** @return The CSS selector that timed out */
+    public String getSelector() {
+        return selector;
+    }
+
+    /** @return The timeout value in milliseconds */
+    public int getTimeout() {
+        return timeout;
+    }
+
+    /** @return The reason for the timeout, or null */
+    public String getReason() {
+        return reason;
+    }
 }
-```
 
 ### Step 6: Generate Matching Tests
 
