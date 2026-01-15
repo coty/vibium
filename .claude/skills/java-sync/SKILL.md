@@ -1,6 +1,18 @@
 ---
 name: java-sync
 description: Synchronize the Vibium Java client with the JavaScript/TypeScript and Python clients for API parity. Use when syncing the Java API, aligning Java to JS/TS and Python, or when the user runs /java-sync.
+allowedCommands:
+  - "mvn clean compile"
+  - "mvn compile"
+  - "mvn test"
+  - "mvn package"
+  - "git diff --stat"
+  - "git log --oneline"
+  - "ls -la"
+  - "find clients/javascript -name '*.ts' -newer"
+  - "stat"
+  - "date"
+  - "cat .claude/skills/java-sync/.last-sync"
 ---
 
 # Java Client Sync Skill
@@ -53,7 +65,39 @@ The Python client may have features not yet in JS, or vice versa. The goal is pa
 | `tests/js/auto-wait.test.js` | `tests/java/AutoWaitTest.java` |
 | `tests/js/process.test.js` | `tests/java/ProcessTest.java` |
 
+## Sync Tracking
+
+This skill tracks when the Java client was last synchronized using a metadata file:
+
+```
+.claude/skills/java-sync/.last-sync
+```
+
+The file contains an ISO timestamp of the last successful sync. On subsequent runs, the skill compares this timestamp with JavaScript client file modification times to determine if a sync is needed.
+
 ## Instructions
+
+### Step 0: Check If Sync Needed
+
+Before doing a full sync, check if JavaScript files have changed since the last sync:
+
+1. **Read the last sync timestamp** (if it exists):
+   ```bash
+   cat .claude/skills/java-sync/.last-sync 2>/dev/null || echo "NO_PREVIOUS_SYNC"
+   ```
+
+2. **Find JavaScript files modified since last sync**:
+   ```bash
+   # If .last-sync exists, find newer files
+   find clients/javascript/src -name '*.ts' -newer .claude/skills/java-sync/.last-sync 2>/dev/null
+   ```
+
+3. **Decision logic**:
+   - If `.last-sync` doesn't exist → Full sync (first time)
+   - If JS files are newer than `.last-sync` → Full sync needed
+   - If no JS files are newer → Report "Java client is up to date" and skip to Step 9
+
+4. **For incremental syncs**, only process the changed files and their dependents.
 
 ### Step 1: Gather Current State
 
@@ -458,12 +502,25 @@ clean-all: clean-bin clean-js clean-java clean-packages clean-cache
 
 Update the `.PHONY` declaration at the top to include new Java targets.
 
-### Step 9: Report
+### Step 9: Record Sync Timestamp
+
+After successful compilation, record the sync timestamp:
+
+```bash
+date -u +"%Y-%m-%dT%H:%M:%SZ" > .claude/skills/java-sync/.last-sync
+```
+
+This enables incremental syncs on future runs.
+
+### Step 10: Report
 
 Provide a summary:
 
 ```
 ## Java Client Sync Summary
+
+### Sync Type
+- Full sync / Incremental sync / No changes needed
 
 ### Files Created
 - com/vibium/Browser.java
@@ -475,6 +532,9 @@ Provide a summary:
 
 ### Verification
 - Compilation: PASS/FAIL
+
+### Last Sync
+- Recorded: <timestamp>
 
 ### Manual Steps Needed
 - (list any items requiring human attention)
