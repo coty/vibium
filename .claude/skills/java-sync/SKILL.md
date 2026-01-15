@@ -221,11 +221,13 @@ Summarize proposed changes and confirm with the user before applying edits. Appl
 
 ### Step 8: Verify
 
-If the Java project has a `pom.xml`, run:
+Compile and test the Java client:
 
 ```bash
-cd clients/java && mvn compile
+cd clients/java && mvn clean compile
 ```
+
+If this is a new Java client setup, ensure the `pom.xml` is configured correctly. See `references/build-setup.md` for required dependencies, plugins, and binary bundling configuration.
 
 Report any compilation errors for manual fixing.
 
@@ -268,3 +270,4 @@ Provide a summary:
 - Check `CONTRIBUTING.md` for usage examples across all client libraries
 - Common pitfalls: nullable JS fields that need Optional/nullable handling in Java, mismatch between JS error names and Java exception classes, and record vs builder usage for mutable options.
 - See `references/parity-rules.md` for stricter mapping rules.
+- See `references/build-setup.md` for Maven configuration, dependencies, and binary bundling.
