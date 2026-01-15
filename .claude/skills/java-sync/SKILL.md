@@ -51,8 +51,24 @@ The Python client may have features not yet in JS, or vice versa. The goal is pa
 | `clients/javascript/src/bidi/client.ts` | `com/vibium/bidi/BiDiClient.java` |
 | `clients/javascript/src/bidi/connection.ts` | `com/vibium/bidi/BiDiConnection.java` |
 | `clients/javascript/src/clicker/process.ts` | `com/vibium/clicker/ClickerProcess.java` (with CompletableFuture, exit watcher, isRunning) |
-| `clients/javascript/src/clicker/binary.ts` | `com/vibium/clicker/BinaryResolver.java` (with JAR extraction, PATH search) |
+| `clients/javascript/src/clicker/binary.ts` | `com/vibium/clicker/BinaryResolver.java` (**see special case below**) |
 | `clients/javascript/src/clicker/platform.ts` | `com/vibium/clicker/Platform.java` (with OS enum, getCacheDir, getPlatformIdentifier) |
+
+**Special Case: BinaryResolver**
+
+The Python client (`clients/python/src/vibium/clicker.py`) has a more comprehensive binary search than JavaScript. Java's `BinaryResolver` should merge both:
+
+| From JavaScript | From Python |
+|-----------------|-------------|
+| `CLICKER_PATH` env var | `VIBIUM_CLICKER_PATH` env var |
+| npm package resolution → JAR extraction | pip package resolution → JAR extraction |
+| Local development paths | PATH search (`shutil.which`) |
+| | Cache directory (`get_cache_dir()`) |
+
+Result: 6-location search order (see `references/parity-rules.md`).
+
+| JavaScript Source | Java Equivalent |
+|-------------------|-----------------|
 | `clients/javascript/src/utils/errors.ts` | `com/vibium/exceptions/*.java` |
 
 ### Test Files
