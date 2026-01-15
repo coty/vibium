@@ -50,9 +50,9 @@ The Python client may have features not yet in JS, or vice versa. The goal is pa
 | `clients/javascript/src/bidi/types.ts` | `com/vibium/bidi/types/*.java` |
 | `clients/javascript/src/bidi/client.ts` | `com/vibium/bidi/BiDiClient.java` |
 | `clients/javascript/src/bidi/connection.ts` | `com/vibium/bidi/BiDiConnection.java` |
-| `clients/javascript/src/clicker/process.ts` | `com/vibium/clicker/ClickerProcess.java` |
-| `clients/javascript/src/clicker/binary.ts` | `com/vibium/clicker/BinaryResolver.java` |
-| `clients/javascript/src/clicker/platform.ts` | `com/vibium/clicker/Platform.java` |
+| `clients/javascript/src/clicker/process.ts` | `com/vibium/clicker/ClickerProcess.java` (with CompletableFuture, exit watcher, isRunning) |
+| `clients/javascript/src/clicker/binary.ts` | `com/vibium/clicker/BinaryResolver.java` (with JAR extraction, PATH search) |
+| `clients/javascript/src/clicker/platform.ts` | `com/vibium/clicker/Platform.java` (with OS enum, getCacheDir, getPlatformIdentifier) |
 | `clients/javascript/src/utils/errors.ts` | `com/vibium/exceptions/*.java` |
 
 ### Test Files
@@ -207,6 +207,30 @@ For each gap, generate idiomatic Java code following these conventions:
    - Blank line after class declaration (before fields)
    - Group related methods together
    - Private helper methods at the end of the class
+
+7. **JavaDoc Style** - Use Title Case for @param/@return descriptions:
+   ```java
+   * @param options Launch configuration    // "Launch" capitalized
+   * @return Vibe instance for automation   // "Vibe" capitalized
+   ```
+
+8. **Record Formatting** - Multi-line with closing brace on own line:
+   ```java
+   public record BiDiCommand(int id, String method, Map<String, Object> params) {
+   }
+   ```
+
+9. **Production-Ready Process Management** - See `references/parity-rules.md` for:
+   - Use `CompletableFuture` for async port detection (not CountDownLatch)
+   - Add exit watcher thread to detect crashes early
+   - Include `isRunning()` method on ClickerProcess
+   - Use `STOP_TIMEOUT_MS` constant for graceful shutdown
+
+10. **Production-Ready Binary Resolution** - BinaryResolver must support:
+    - `resolve(String explicitPath)` overload
+    - Search order: explicit path → env vars → bundled JAR → PATH → cache → local
+    - JAR extraction with atomic file operations
+    - Helpful error messages listing resolution options
 
 **Patterns:**
 - Use Java 17 records for immutable data types
@@ -556,5 +580,8 @@ Provide a summary:
 - BiDi protocol layer changes require careful testing
 - Check `CONTRIBUTING.md` for usage examples across all client libraries
 - Common pitfalls: nullable JS fields that need Optional/nullable handling in Java, mismatch between JS error names and Java exception classes, and record vs builder usage for mutable options.
-- See `references/parity-rules.md` for stricter mapping rules.
+- See `references/parity-rules.md` for stricter mapping rules and **production-ready patterns** for:
+  - ClickerProcess (CompletableFuture, exit watcher, isRunning)
+  - BinaryResolver (JAR extraction, PATH search, 6-location resolution)
+  - Platform (OS enum, getCacheDir, getPlatformIdentifier)
 - See `references/build-setup.md` for Maven configuration, dependencies, and binary bundling.
