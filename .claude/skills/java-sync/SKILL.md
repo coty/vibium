@@ -9,10 +9,12 @@ allowedCommands:
   - "git diff --stat"
   - "git log --oneline"
   - "ls -la"
+  - "ls"
   - "find clients/javascript -name '*.ts' -newer"
   - "stat"
   - "date"
   - "cat .claude/skills/java-sync/.last-sync"
+  - "mkdir -p"
 ---
 
 # Java Client Sync Skill
@@ -596,7 +598,8 @@ Provide a summary:
 - BiDi protocol layer changes require careful testing
 - Check `CONTRIBUTING.md` for usage examples across all client libraries
 - Common pitfalls: nullable JS fields that need Optional/nullable handling in Java, mismatch between JS error names and Java exception classes, and record vs builder usage for mutable options.
-- See `references/parity-rules.md` for stricter mapping rules and **production-ready patterns** for:
+- See `references/ts-java-translation.md` for **general TypeScript → Java translation patterns** (types, functions, async, error handling, discriminated unions)
+- See `references/parity-rules.md` for **vibium-specific mapping rules** and production-ready patterns for:
   - ClickerProcess (CompletableFuture, exit watcher, isRunning)
   - BinaryResolver (JAR extraction, PATH search, 6-location resolution)
   - Platform (OS enum, getCacheDir, getPlatformIdentifier)

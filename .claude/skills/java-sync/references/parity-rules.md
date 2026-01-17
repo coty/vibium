@@ -2,12 +2,57 @@
 
 Use these rules when mapping JS/TS (and Python) APIs to Java.
 
+## API Completeness
+
+**Preserve full API parity, even for unused methods.** If the JavaScript client exposes a public method or property, the Java client must include it—even if it's not currently called anywhere in the codebase.
+
+Rationale:
+- Users may depend on these APIs
+- Future features may require them
+- API surface should match across all client libraries
+
+Examples of APIs to include even if unused:
+- Event handlers (`onEvent()`, `onMessage()`)
+- Optional callback setters
+- Utility methods on public classes
+
 ## Naming
 
 - Keep public class/method names aligned with JS/TS.
 - Java exceptions should use idiomatic Java names but preserve the JS error concept (e.g., `TimeoutError` -> `TimeoutException`).
 - Constants: Use `UPPER_SNAKE_CASE` with `long` type for timeouts (e.g., `private static final long START_TIMEOUT_MS = 10000;`).
 - Logger variable: Always name it `log` (not `logger`).
+
+## Type Safety
+
+**Preserve type safety in translation.** If TypeScript uses specific types, Java should use equivalent typed classes - don't downgrade to raw types (`JsonObject`, `Object`, `Map<String, Object>`) when TypeScript has concrete types.
+
+This applies to:
+- **API responses** → use typed records, not `JsonObject`
+- **Method return types** → use specific types, not `Object`
+- **Generic methods** → use `Class<T>` parameter (idiomatic Java pattern)
+- **Collections** → use typed collections, not raw
+
+```typescript
+// TypeScript - typed response
+const tree = await client.send<BrowsingContextTree>('browsingContext.getTree');
+const result = await client.send<NavigationResult>('browsingContext.navigate', params);
+```
+
+```java
+// Java - WRONG (loses type safety)
+JsonObject result = client.send("browsingContext.getTree");
+String context = result.getAsJsonArray("contexts").get(0)...  // manual extraction
+
+// Java - CORRECT (preserves type safety, idiomatic pattern)
+public <T> T send(String method, Map<String, Object> params, Class<T> responseType) {
+    JsonObject raw = sendRaw(method, params);
+    return gson.fromJson(raw, responseType);
+}
+
+BrowsingContextTree tree = client.send("browsingContext.getTree", params, BrowsingContextTree.class);
+String context = tree.contexts().get(0).context();  // type-safe access
+```
 
 ## Nullability and Optionals
 
@@ -34,6 +79,93 @@ Use these rules when mapping JS/TS (and Python) APIs to Java.
 - Use **builders** (fluent setters returning `this`) for options objects passed by callers:
   - `LaunchOptions`, `FindOptions`, `ActionOptions`
 
+## TypeScript String Literal Types → Java Enums
+
+When TypeScript uses string literal union types, translate to Java enums with `getIdentifier()`:
+
+```typescript
+// TypeScript
+export type Platform = 'linux' | 'darwin' | 'win32';
+export type Arch = 'x64' | 'arm64';
+```
+
+```java
+// Java - Enum with identifier for string representation
+public enum OS {
+    LINUX("linux"),
+    DARWIN("darwin"),
+    WINDOWS("win32");
+
+    private final String identifier;
+
+    OS(String identifier) {
+        this.identifier = identifier;
+    }
+
+    public String getIdentifier() {
+        return identifier;
+    }
+}
+
+public enum Arch {
+    X64("x64"),
+    ARM64("arm64");
+
+    private final String identifier;
+
+    Arch(String identifier) {
+        this.identifier = identifier;
+    }
+
+    public String getIdentifier() {
+        return identifier;
+    }
+}
+```
+
+This pattern:
+- Preserves type safety (enum vs raw string)
+- Provides the exact string value via `getIdentifier()` for serialization/comparison
+- Matches the TypeScript string values exactly
+
+**Important:** When detecting platform/architecture, throw exceptions for unsupported values (matching JS behavior):
+
+```typescript
+// JavaScript - throws for unsupported
+export function getPlatform(): Platform {
+  const platform = os.platform();
+  if (platform === 'linux' || platform === 'darwin' || platform === 'win32') {
+    return platform;
+  }
+  throw new Error(`Unsupported platform: ${platform}`);
+}
+```
+
+```java
+// Java - also throws for unsupported (DO NOT default to a fallback)
+public static OS getOS() {
+    String os = System.getProperty("os.name").toLowerCase();
+    if (os.contains("linux")) {
+        return OS.LINUX;
+    } else if (os.contains("mac") || os.contains("darwin")) {
+        return OS.DARWIN;
+    } else if (os.contains("win")) {
+        return OS.WINDOWS;
+    }
+    throw new UnsupportedOperationException("Unsupported operating system: " + os);
+}
+
+public static Arch getArch() {
+    String arch = System.getProperty("os.arch").toLowerCase();
+    if (arch.contains("amd64") || arch.contains("x86_64")) {
+        return Arch.X64;
+    } else if (arch.contains("aarch64") || arch.contains("arm64")) {
+        return Arch.ARM64;
+    }
+    throw new UnsupportedOperationException("Unsupported architecture: " + arch);
+}
+```
+
 ## BiDi Protocol Types
 
 Always create ALL of these types, even if not all are directly used:
@@ -46,6 +178,14 @@ Always create ALL of these types, even if not all are directly used:
 | `BiDiError` | Error details: `record BiDiError(String error, String message, String stacktrace)` |
 
 ## Error Handling
+
+See `ts-java-translation.md` for general TS→Java exception mapping rules. Key points:
+
+- **`throw new Error(msg)`** → **`throw new RuntimeException(msg)`**
+- **Typed TS errors** (e.g., `class ValidationError extends Error`) → **Typed Java exceptions** (e.g., `ValidationException extends RuntimeException`)
+- Prefer unchecked exceptions (`extends RuntimeException`) unless at a clear API boundary
+
+**Vibium-specific rules:**
 
 - **Always clean up resources on failure** - especially in `Browser.launch()`:
   ```java
@@ -406,59 +546,75 @@ public class BinaryResolver {
 
 ## Platform Utilities
 
-Platform.java must include these utility methods:
+Platform.java must include these utility methods. **Important:** Throw exceptions for unsupported platforms/architectures (see "TypeScript String Literal Types → Java Enums" section above).
 
 ```java
 public class Platform {
 
     public enum OS {
-        DARWIN, LINUX, WINDOWS
+        LINUX("linux"),
+        DARWIN("darwin"),
+        WINDOWS("win32");
+
+        private final String identifier;
+
+        OS(String identifier) {
+            this.identifier = identifier;
+        }
+
+        public String getIdentifier() {
+            return identifier;
+        }
+    }
+
+    public enum Arch {
+        X64("x64"),
+        ARM64("arm64");
+
+        private final String identifier;
+
+        Arch(String identifier) {
+            this.identifier = identifier;
+        }
+
+        public String getIdentifier() {
+            return identifier;
+        }
     }
 
     /**
-     * Get the current operating system as an enum.
+     * Get the current operating system.
      */
     public static OS getOS() {
         String os = System.getProperty("os.name").toLowerCase();
-        if (os.contains("mac") || os.contains("darwin")) {
+        if (os.contains("linux")) {
+            return OS.LINUX;
+        } else if (os.contains("mac") || os.contains("darwin")) {
             return OS.DARWIN;
         } else if (os.contains("win")) {
             return OS.WINDOWS;
         }
-        return OS.LINUX;
+        throw new UnsupportedOperationException("Unsupported operating system: " + os);
+    }
+
+    /**
+     * Get the current architecture.
+     */
+    public static Arch getArch() {
+        String arch = System.getProperty("os.arch").toLowerCase();
+        if (arch.contains("amd64") || arch.contains("x86_64")) {
+            return Arch.X64;
+        } else if (arch.contains("aarch64") || arch.contains("arm64")) {
+            return Arch.ARM64;
+        }
+        throw new UnsupportedOperationException("Unsupported architecture: " + arch);
     }
 
     /**
      * Get platform identifier for binary paths (e.g., "darwin-arm64").
      */
     public static String getPlatformIdentifier() {
-        String os = getOS().name().toLowerCase();
-        if (os.equals("windows")) os = "win32";
-        return os + "-" + getArch();
-    }
-
-    /**
-     * Get the cache directory for extracted binaries.
-     *
-     * - macOS: ~/Library/Caches/vibium
-     * - Linux: ~/.cache/vibium
-     * - Windows: %LOCALAPPDATA%/vibium/cache
-     */
-    public static Path getCacheDir() {
-        OS os = getOS();
-        String home = System.getProperty("user.home");
-
-        return switch (os) {
-            case DARWIN -> Paths.get(home, "Library", "Caches", "vibium");
-            case WINDOWS -> {
-                String localAppData = System.getenv("LOCALAPPDATA");
-                if (localAppData != null) {
-                    yield Paths.get(localAppData, "vibium", "cache");
-                }
-                yield Paths.get(home, "AppData", "Local", "vibium", "cache");
-            }
-            case LINUX -> Paths.get(home, ".cache", "vibium");
-        };
+        return getOS().getIdentifier() + "-" + getArch().getIdentifier();
     }
 
     /**
@@ -469,14 +625,30 @@ public class Platform {
     }
 
     /**
-     * Get architecture string.
+     * Get the cache directory for extracted binaries.
+     *
+     * - macOS: ~/Library/Caches/vibium
+     * - Linux: ~/.cache/vibium (or XDG_CACHE_HOME/vibium)
+     * - Windows: %LOCALAPPDATA%/vibium
      */
-    public static String getArch() {
-        String arch = System.getProperty("os.arch").toLowerCase();
-        if (arch.contains("aarch64") || arch.contains("arm64")) {
-            return "arm64";
+    public static Path getCacheDir() {
+        String home = System.getProperty("user.home");
+        switch (getOS()) {
+            case DARWIN:
+                return Paths.get(home, "Library", "Caches", "vibium");
+            case WINDOWS:
+                String localAppData = System.getenv("LOCALAPPDATA");
+                if (localAppData != null && !localAppData.isEmpty()) {
+                    return Paths.get(localAppData, "vibium");
+                }
+                return Paths.get(home, "AppData", "Local", "vibium");
+            default: // LINUX
+                String xdgCache = System.getenv("XDG_CACHE_HOME");
+                if (xdgCache != null && !xdgCache.isEmpty()) {
+                    return Paths.get(xdgCache, "vibium");
+                }
+                return Paths.get(home, ".cache", "vibium");
         }
-        return "x64";
     }
 }
 ```
