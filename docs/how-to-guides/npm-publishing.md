@@ -54,12 +54,14 @@ All packages must have matching versions. Update all package.json files together
 
 ```bash
 # Files to update:
+# - clients/javascript/package.json
 # - packages/vibium/package.json (version + optionalDependencies versions)
 # - packages/linux-x64/package.json
 # - packages/linux-arm64/package.json
 # - packages/darwin-x64/package.json
 # - packages/darwin-arm64/package.json
 # - packages/win32-x64/package.json
+# - package-lock.json (run `npm install` to regenerate)
 ```
 
 ## Troubleshooting
