@@ -55,8 +55,8 @@ Vibium is browser automation infrastructure built for AI agents. A single binary
                       │ WebSocket BiDi :9515
                       ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                       Client Libraries                       │
-│           npm install vibium  ·  pip install vibium          │
+│                     Client Libraries                        │
+│         npm install vibium  ·  pip install vibium           │
 │                                                             │
 │    ┌─────────────────┐               ┌─────────────────┐    │
 │    │ Async API       │               │    Sync API     │    │
