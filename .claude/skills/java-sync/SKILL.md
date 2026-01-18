@@ -1,20 +1,13 @@
 ---
 name: java-sync
 description: Synchronize the Vibium Java client with the JavaScript/TypeScript and Python clients for API parity. Use when syncing the Java API, aligning Java to JS/TS and Python, or when the user runs /java-sync.
-allowedCommands:
-  - "mvn clean compile"
-  - "mvn compile"
-  - "mvn test"
-  - "mvn package"
-  - "git diff --stat"
-  - "git log --oneline"
-  - "ls -la"
-  - "ls"
-  - "find clients/javascript -name '*.ts' -newer"
-  - "stat"
-  - "date"
-  - "cat .claude/skills/java-sync/.last-sync"
-  - "mkdir -p"
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
 ---
 
 # Java Client Sync Skill

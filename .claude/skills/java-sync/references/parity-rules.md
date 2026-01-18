@@ -281,6 +281,53 @@ public class Example {
   JsonObject response = future.get(timeoutMs, TimeUnit.MILLISECONDS);
   ```
 
+## WebSocket Message Handler Race Condition
+
+**Critical:** When using Java-WebSocket library, set the message handler BEFORE connecting, not after. Otherwise, messages received between `connect()` completing and the handler being set will be dropped.
+
+```java
+// WRONG - race condition, messages can be lost
+public static BiDiClient connect(String url) {
+    BiDiConnection connection = BiDiConnection.connect(url);  // connects immediately
+    return new BiDiClient(connection);  // handler set in constructor - TOO LATE
+}
+
+// CORRECT - handler set before connection opens
+public static BiDiClient connect(String url) {
+    BiDiClient client = new BiDiClient(null);
+    BiDiConnection connection = BiDiConnection.connect(url, client::handleMessage);  // handler passed to connect
+    client.connection = connection;
+    return client;
+}
+```
+
+The `BiDiConnection.connect()` method must accept an optional message handler:
+
+```java
+public static BiDiConnection connect(String url, Consumer<String> messageHandler) {
+    try {
+        URI uri = new URI(url);
+        BiDiConnection connection = new BiDiConnection(uri);
+        // Set handler BEFORE connecting to avoid race condition
+        connection.messageHandler = messageHandler;
+        connection.connect();
+
+        // Wait for connection to open
+        connection.openFuture.get(CONNECT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        return connection;
+    } catch (Exception e) {
+        throw new ConnectionException(url, e);
+    }
+}
+
+// Convenience overload for cases that don't need immediate handler
+public static BiDiConnection connect(String url) {
+    return connect(url, null);
+}
+```
+
+This ensures the handler is registered before the WebSocket's `onOpen` callback fires, which is when the server may start sending messages.
+
 ## Tests
 
 - Test names should reflect the JS test intent using camelCase (e.g., `screenshotReturnsPngBuffer`).
