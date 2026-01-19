@@ -96,7 +96,7 @@ Before publishing a new version:
 1. Update version in `clients/python/pyproject.toml`
 2. Update version in `clients/python/src/vibium/__init__.py`
 3. Update version in all platform `packages/python/*/pyproject.toml` files
-4. Rebuild: `make clean-python && make package-python`
+4. Rebuild: `make clean-python-packages && make package-python`
 5. Test locally
 6. Publish
 

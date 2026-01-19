@@ -1,4 +1,4 @@
-.PHONY: all build build-go build-js build-all-platforms package package-js package-python install-browser deps clean clean-bin clean-js clean-packages clean-python clean-cache clean-all serve test test-cli test-js test-mcp test-python double-tap help
+.PHONY: all build build-go build-js build-go-all package package-js package-python install-browser deps clean clean-go clean-js clean-npm-packages clean-python-packages clean-packages clean-cache clean-all serve test test-cli test-js test-mcp test-python double-tap help
 
 # Default target
 all: build
@@ -16,7 +16,7 @@ build-js: deps
 
 # Cross-compile clicker for all platforms (static binaries)
 # Output: clicker/bin/clicker-{os}-{arch}[.exe]
-build-all-platforms:
+build-go-all:
 	@echo "Cross-compiling clicker for all platforms..."
 	cd clicker && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/clicker-linux-amd64 ./cmd/clicker
 	cd clicker && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o bin/clicker-linux-arm64 ./cmd/clicker
@@ -30,7 +30,7 @@ build-all-platforms:
 package: package-js package-python
 
 # Build all npm packages for publishing
-package-js: build-all-platforms build-js
+package-js: build-go-all build-js
 	@echo "Copying binaries to platform packages..."
 	mkdir -p packages/linux-x64/bin packages/linux-arm64/bin packages/darwin-x64/bin packages/darwin-arm64/bin packages/win32-x64/bin
 	cp clicker/bin/clicker-linux-amd64 packages/linux-x64/bin/clicker
@@ -44,7 +44,7 @@ package-js: build-all-platforms build-js
 	@echo "All npm packages ready for publishing!"
 
 # Build all Python packages (wheels)
-package-python: build-all-platforms
+package-python: build-go-all
 	@echo "Copying binaries to Python platform packages..."
 	mkdir -p packages/python/vibium_linux_x64/src/vibium_linux_x64/bin packages/python/vibium_linux_arm64/src/vibium_linux_arm64/bin packages/python/vibium_darwin_x64/src/vibium_darwin_x64/bin packages/python/vibium_darwin_arm64/src/vibium_darwin_arm64/bin packages/python/vibium_win32_x64/src/vibium_win32_x64/bin
 	cp clicker/bin/clicker-linux-amd64 packages/python/vibium_linux_x64/src/vibium_linux_x64/bin/clicker
@@ -122,7 +122,7 @@ double-tap:
 	@echo "Done."
 
 # Clean clicker binaries
-clean-bin:
+clean-go:
 	rm -rf clicker/bin
 
 # Clean JS dist
@@ -130,60 +130,66 @@ clean-js:
 	rm -rf clients/javascript/dist
 
 # Clean built npm packages
-clean-packages:
+clean-npm-packages:
 	rm -f packages/*/bin/clicker packages/*/bin/clicker.exe
 	rm -rf packages/vibium/dist
 
-# Clean Python (venv, dist, platform binaries)
-clean-python:
+# Clean Python packages (venv, dist, platform binaries)
+clean-python-packages:
 	rm -rf clients/python/.venv clients/python/dist
 	rm -f packages/python/*/src/*/bin/clicker packages/python/*/src/*/bin/clicker.exe
 	rm -rf packages/python/*/dist
+
+# Clean all built packages (npm + Python)
+clean-packages: clean-npm-packages clean-python-packages
 
 # Clean cached Chrome for Testing
 clean-cache:
 	rm -rf ~/Library/Caches/vibium/chrome-for-testing
 	rm -rf ~/.cache/vibium/chrome-for-testing
 
-# Clean everything (binaries + JS dist + packages + Python + cache)
-clean-all: clean-bin clean-js clean-packages clean-python clean-cache
+# Clean everything (binaries + JS dist + packages + cache)
+clean-all: clean-go clean-js clean-packages clean-cache
 
-# Alias for clean-bin + clean-js
-clean: clean-bin clean-js
+# Alias for clean-go + clean-js
+clean: clean-go clean-js
 
 # Show available targets
 help:
 	@echo "Available targets:"
 	@echo ""
 	@echo "Build:"
-	@echo "  make                    - Build everything (default)"
-	@echo "  make build-go           - Build clicker binary"
-	@echo "  make build-js           - Build JS client"
-	@echo "  make build-all-platforms - Cross-compile clicker for all platforms"
+	@echo "  make                       - Build everything (default)"
+	@echo "  make build-go              - Build clicker binary"
+	@echo "  make build-js              - Build JS client"
+	@echo "  make build-go-all          - Cross-compile clicker for all platforms"
 	@echo ""
 	@echo "Package:"
-	@echo "  make package            - Build all packages (npm + Python)"
-	@echo "  make package-js         - Build npm packages only"
-	@echo "  make package-python     - Build Python wheels only"
+	@echo "  make package               - Build all packages (npm + Python)"
+	@echo "  make package-js            - Build npm packages only"
+	@echo "  make package-python        - Build Python wheels only"
 	@echo ""
 	@echo "Test:"
-	@echo "  make test               - Run all tests (CLI + JS + MCP)"
-	@echo "  make test-cli           - Run CLI tests only"
-	@echo "  make test-js            - Run JS library tests only"
-	@echo "  make test-mcp           - Run MCP server tests only"
-	@echo "  make test-python        - Run Python client tests"
+	@echo "  make test                  - Run all tests (CLI + JS + MCP)"
+	@echo "  make test-cli              - Run CLI tests only"
+	@echo "  make test-js               - Run JS library tests only"
+	@echo "  make test-mcp              - Run MCP server tests only"
+	@echo "  make test-python           - Run Python client tests"
 	@echo ""
 	@echo "Other:"
-	@echo "  make install-browser    - Install Chrome for Testing"
-	@echo "  make deps               - Install npm dependencies"
-	@echo "  make serve              - Start proxy server on :9515"
-	@echo "  make double-tap         - Kill zombie Chrome/chromedriver processes"
+	@echo "  make install-browser       - Install Chrome for Testing"
+	@echo "  make deps                  - Install npm dependencies"
+	@echo "  make serve                 - Start proxy server on :9515"
+	@echo "  make double-tap            - Kill zombie Chrome/chromedriver processes"
 	@echo ""
 	@echo "Clean:"
-	@echo "  make clean              - Clean binaries and JS dist"
-	@echo "  make clean-packages     - Clean built npm packages"
-	@echo "  make clean-python       - Clean Python venv, dist, and binaries"
-	@echo "  make clean-cache        - Clean cached Chrome for Testing"
-	@echo "  make clean-all          - Clean everything"
+	@echo "  make clean                 - Clean binaries and JS dist"
+	@echo "  make clean-go              - Clean clicker binaries"
+	@echo "  make clean-js              - Clean JS client dist"
+	@echo "  make clean-npm-packages    - Clean built npm packages"
+	@echo "  make clean-python-packages - Clean Python packages"
+	@echo "  make clean-packages        - Clean all packages (npm + Python)"
+	@echo "  make clean-cache           - Clean cached Chrome for Testing"
+	@echo "  make clean-all             - Clean everything"
 	@echo ""
-	@echo "  make help               - Show this help"
+	@echo "  make help                  - Show this help"
