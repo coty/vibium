@@ -71,6 +71,102 @@ String context = tree.contexts().get(0).context();  // type-safe access
   public Boolean getHeadless() { ... } // WRONG
   ```
 
+## Duration-Based Timeouts
+
+For timeout parameters, provide **both** `Integer` milliseconds and `java.time.Duration` overloads:
+
+```java
+/**
+ * Options for finding elements.
+ */
+public class FindOptions {
+
+    private Integer timeout = null;
+
+    /**
+     * Set timeout in milliseconds.
+     */
+    public FindOptions timeout(int timeoutMs) {
+        this.timeout = timeoutMs;
+        return this;
+    }
+
+    /**
+     * Set timeout using Duration (more idiomatic Java API).
+     */
+    public FindOptions timeout(Duration timeout) {
+        this.timeout = (int) timeout.toMillis();
+        return this;
+    }
+
+    /**
+     * Create options with the specified timeout.
+     */
+    public static FindOptions withTimeout(int timeoutMs) {
+        return new FindOptions().timeout(timeoutMs);
+    }
+
+    /**
+     * Create options with the specified timeout.
+     */
+    public static FindOptions withTimeout(Duration timeout) {
+        return new FindOptions().timeout(timeout);
+    }
+
+    public Integer getTimeout() {
+        return timeout;
+    }
+}
+```
+
+Similarly for Vibe.find():
+
+```java
+/**
+ * Find an element with Duration timeout.
+ */
+public Element find(String selector, Duration timeout) {
+    return find(selector, FindOptions.withTimeout(timeout));
+}
+```
+
+This provides flexibility - users can choose `find("btn", 5000)` or `find("btn", Duration.ofSeconds(5))`.
+
+## Browser.connect() for Existing Browsers
+
+The Browser class must support connecting to an already-running browser:
+
+```java
+public class Browser {
+
+    /**
+     * Connect to an existing browser at the specified WebSocket URL.
+     * Use this when you want to connect to a browser that was started externally.
+     *
+     * @param wsUrl The WebSocket URL (e.g., "ws://localhost:9222")
+     * @return Vibe instance connected to the browser
+     */
+    public static Vibe connect(String wsUrl) {
+        log.debug("Connecting to browser at {}", wsUrl);
+        BiDiClient client = BiDiClient.connect(wsUrl);
+        log.info("Connected to browser at {}", wsUrl);
+        return new Vibe(client, null);  // null process - not managed by us
+    }
+}
+```
+
+**Note:** When process is null, the Vibe.quit() method should only close the client, not attempt to stop a non-existent process:
+
+```java
+public void quit() {
+    log.debug("Quitting browser");
+    client.close();
+    if (process != null) {
+        process.stop();
+    }
+}
+```
+
 ## Records vs Builders
 
 - Use **records** for immutable data payloads coming from the protocol:
@@ -444,8 +540,50 @@ public class ClickerProcess {
     public boolean isRunning() {
         return process.isAlive() && !stopped;
     }
+
+    /**
+     * Stop the process with proper descendant cleanup.
+     * Critical for Windows where child processes aren't automatically killed.
+     */
+    public void stop() {
+        if (stopped) return;
+        stopped = true;
+        ProcessManager.unregister(this);
+
+        if (!process.isAlive()) return;
+
+        log.debug("Stopping clicker process on port {}", port);
+
+        // Kill descendant processes first (ChromeDriver, Chrome)
+        // This is necessary on Windows where process.destroy() doesn't kill children
+        try {
+            ProcessHandle processHandle = process.toHandle();
+            processHandle.descendants().forEach(ph -> {
+                log.debug("Killing descendant process: {} ({})", ph.pid(),
+                        ph.info().command().orElse("unknown"));
+                ph.destroyForcibly();
+            });
+        } catch (Exception e) {
+            log.debug("Error killing descendant processes: {}", e.getMessage());
+        }
+
+        // Now stop the clicker process itself
+        process.destroy();
+
+        try {
+            if (!process.waitFor(STOP_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+                log.debug("Force killing clicker process");
+                process.destroyForcibly();
+            }
+        } catch (InterruptedException e) {
+            process.destroyForcibly();
+            Thread.currentThread().interrupt();
+        }
+    }
 }
 ```
+
+**Important:** The descendant process cleanup using `ProcessHandle.descendants()` is critical for Windows compatibility. Without it, Chrome and ChromeDriver processes may be orphaned when the main process exits.
 
 ## Production-Ready Binary Resolution (BinaryResolver)
 
@@ -590,6 +728,197 @@ public class BinaryResolver {
     }
 }
 ```
+
+## ProcessManager for JVM Shutdown Hooks
+
+Java applications need to clean up spawned processes when the JVM exits. Implement a ProcessManager with JVM shutdown hooks:
+
+```java
+/**
+ * Manages clicker processes and ensures cleanup on JVM shutdown.
+ */
+public class ProcessManager {
+
+    private static final Logger log = LoggerFactory.getLogger(ProcessManager.class);
+    private static final Set<ClickerProcess> activeProcesses = ConcurrentHashMap.newKeySet();
+    private static volatile boolean shutdownHookRegistered = false;
+
+    private ProcessManager() {
+        // Static class
+    }
+
+    /**
+     * Register a process for automatic cleanup on JVM shutdown.
+     */
+    public static void register(ClickerProcess process) {
+        ensureShutdownHook();
+        activeProcesses.add(process);
+    }
+
+    /**
+     * Unregister a process (called when process is manually stopped).
+     */
+    public static void unregister(ClickerProcess process) {
+        activeProcesses.remove(process);
+    }
+
+    /**
+     * Get the number of active processes.
+     */
+    public static int getActiveCount() {
+        return activeProcesses.size();
+    }
+
+    /**
+     * Stop all registered processes immediately.
+     */
+    public static void stopAll() {
+        if (activeProcesses.isEmpty()) return;
+
+        log.info("Stopping {} active clicker process(es)", activeProcesses.size());
+        for (ClickerProcess process : activeProcesses) {
+            try {
+                process.stop();
+            } catch (Exception e) {
+                log.warn("Error stopping process during shutdown", e);
+            }
+        }
+        activeProcesses.clear();
+    }
+
+    private static synchronized void ensureShutdownHook() {
+        if (shutdownHookRegistered) return;
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            log.debug("JVM shutdown detected, cleaning up processes");
+            stopAll();
+        }, "vibium-process-cleanup"));
+
+        shutdownHookRegistered = true;
+    }
+}
+```
+
+**Integration with ClickerProcess:**
+```java
+// In ClickerProcess.start():
+ClickerProcess clickerProcess = new ClickerProcess(proc, actualPort);
+ProcessManager.register(clickerProcess);  // Register for cleanup
+return clickerProcess;
+
+// In ClickerProcess.stop():
+public void stop() {
+    if (stopped) return;
+    stopped = true;
+    ProcessManager.unregister(this);  // Unregister when manually stopped
+    // ... cleanup logic
+}
+```
+
+This ensures browsers/drivers are never orphaned, matching the JS client behavior where processes are tracked and cleaned up automatically.
+
+## Connection Status (isConnected)
+
+Both BiDiClient and Vibe should expose an `isConnected()` method for checking connection health:
+
+**JS/TS pattern:**
+```typescript
+// In BiDiClient
+isConnected(): boolean {
+  return !this.connection.closed;
+}
+
+// In Vibe
+isConnected(): boolean {
+  return this.client.isConnected();
+}
+```
+
+**Java implementation:**
+```java
+// In BiDiClient
+public boolean isConnected() {
+    return connection != null && !connection.isClosed();
+}
+
+// In Vibe
+public boolean isConnected() {
+    return client != null && client.isConnected();
+}
+```
+
+This allows users to check connection state before sending commands or to detect disconnection.
+
+## BiDiException with Error Codes
+
+Protocol errors should include the error code for programmatic handling. This matches the JS BiDiError pattern:
+
+**JS/TS pattern:**
+```typescript
+export class BiDiError extends Error {
+  constructor(
+    public errorCode: string,
+    message: string,
+    public stacktrace?: string
+  ) {
+    super(`${errorCode}: ${message}`);
+    this.name = 'BiDiError';
+  }
+}
+```
+
+**Java implementation:**
+```java
+/**
+ * Exception thrown when the BiDi protocol returns an error response.
+ * Includes the error code from the protocol for programmatic handling.
+ */
+public class BiDiException extends RuntimeException {
+
+    private final String errorCode;
+    private final String stacktrace;
+
+    public BiDiException(String errorCode, String message, String stacktrace) {
+        super(errorCode + ": " + message);
+        this.errorCode = errorCode;
+        this.stacktrace = stacktrace;
+    }
+
+    /** Get the protocol error code (e.g., "no such element", "timeout"). */
+    public String getErrorCode() {
+        return errorCode;
+    }
+
+    /** Get the server-side stacktrace if available. */
+    public String getServerStacktrace() {
+        return stacktrace;
+    }
+
+    /** Check if this is a specific error type. */
+    public boolean isError(String code) {
+        return errorCode != null && errorCode.equals(code);
+    }
+}
+```
+
+**Usage in BiDiClient.handleResponse():**
+```java
+if ("error".equals(type) && json.has("error")) {
+    JsonObject error = json.getAsJsonObject("error");
+    String errorMsg = error.has("message") ? error.get("message").getAsString() : "Unknown error";
+    String errorCode = error.has("error") ? error.get("error").getAsString() : "unknown error";
+    String stacktrace = error.has("stacktrace") ? error.get("stacktrace").getAsString() : null;
+    future.completeExceptionally(new BiDiException(errorCode, errorMsg, stacktrace));
+}
+```
+
+Common error codes include:
+- `unknown error` - Unspecified error
+- `invalid argument` - Invalid command parameters
+- `no such element` - Element not found
+- `no such frame` - Frame not found
+- `no such window` - Browsing context not found
+- `timeout` - Operation timed out
 
 ## Platform Utilities
 

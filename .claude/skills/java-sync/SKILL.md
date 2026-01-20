@@ -39,13 +39,13 @@ The Python client may have features not yet in JS, or vice versa. The goal is pa
 | JavaScript Source | Java Equivalent |
 |-------------------|-----------------|
 | `clients/javascript/src/index.ts` | Package exports |
-| `clients/javascript/src/browser.ts` | `com/vibium/Browser.java` |
-| `clients/javascript/src/vibe.ts` | `com/vibium/Vibe.java` |
+| `clients/javascript/src/browser.ts` | `com/vibium/Browser.java` (includes `launch()` and `connect(wsUrl)`) |
+| `clients/javascript/src/vibe.ts` | `com/vibium/Vibe.java` (includes `find(selector, Duration)` overload) |
 | `clients/javascript/src/element.ts` | `com/vibium/Element.java` |
 | `clients/javascript/src/bidi/types.ts` | `com/vibium/bidi/types/*.java` |
 | `clients/javascript/src/bidi/client.ts` | `com/vibium/bidi/BiDiClient.java` |
 | `clients/javascript/src/bidi/connection.ts` | `com/vibium/bidi/BiDiConnection.java` |
-| `clients/javascript/src/clicker/process.ts` | `com/vibium/clicker/ClickerProcess.java` (with CompletableFuture, exit watcher, isRunning) |
+| `clients/javascript/src/clicker/process.ts` | `com/vibium/clicker/ClickerProcess.java` (with CompletableFuture, exit watcher, isRunning, **descendant cleanup**) |
 | `clients/javascript/src/clicker/binary.ts` | `com/vibium/clicker/BinaryResolver.java` (**see special case below**) |
 | `clients/javascript/src/clicker/platform.ts` | `com/vibium/clicker/Platform.java` (with OS enum, getCacheDir, getPlatformIdentifier) |
 
