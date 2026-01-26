@@ -68,13 +68,15 @@ Result: 6-location search order (see `references/parity-rules.md`).
 
 ### Test Files
 
+Java tests follow Maven's standard directory structure: `clients/java/src/test/java/com/vibium/`
+
 | JavaScript Test | Java Test |
 |-----------------|-----------|
-| `tests/js/sync-api.test.js` | `tests/java/ApiTest.java` |
+| `tests/js/sync-api.test.js` | `clients/java/src/test/java/com/vibium/ApiTest.java` |
 | `tests/js/async-api.test.js` | N/A (Java is sync by default) |
-| `tests/js/browser-modes.test.js` | `tests/java/BrowserModesTest.java` |
-| `tests/js/auto-wait.test.js` | `tests/java/AutoWaitTest.java` |
-| `tests/js/process.test.js` | `tests/java/ProcessTest.java` |
+| `tests/js/browser-modes.test.js` | `clients/java/src/test/java/com/vibium/BrowserModesTest.java` |
+| `tests/js/auto-wait.test.js` | `clients/java/src/test/java/com/vibium/AutoWaitTest.java` |
+| `tests/js/process.test.js` | `clients/java/src/test/java/com/vibium/ProcessTest.java` |
 
 ## Sync Tracking
 
@@ -507,7 +509,7 @@ See `references/test-translation.md` for example translations and a full Java te
 
 Summarize proposed changes and confirm with the user before applying edits. Apply approved changes to:
 - Source: `clients/java/src/main/java/com/vibium/`
-- Tests: `tests/java/`
+- Tests: `clients/java/src/test/java/com/vibium/`
 
 ### Step 8: Verify
 

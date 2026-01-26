@@ -16,7 +16,7 @@ test('vibe.go() navigates to URL (sync)', () => {
 ```
 
 ```java
-// tests/java/ApiTest.java
+// clients/java/src/test/java/com/vibium/ApiTest.java
 @Test
 void goNavigatesToUrl() {
     try (Vibe vibe = Browser.launch(new LaunchOptions().headless(true))) {
