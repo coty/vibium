@@ -1,4 +1,4 @@
-.PHONY: all build build-go build-js build-go-all package package-js package-python install-browser deps clean clean-go clean-js clean-npm-packages clean-python-packages clean-packages clean-cache clean-all serve test test-cli test-js test-mcp test-python double-tap get-version set-version help
+.PHONY: all build build-go build-js build-java build-go-all package package-js package-python package-java install-browser deps clean clean-go clean-js clean-java clean-npm-packages clean-python-packages clean-packages clean-cache clean-all serve test test-cli test-js test-java test-mcp test-python double-tap get-version set-version help
 
 # Version from VERSION file
 VERSION := $(shell cat VERSION)
@@ -16,6 +16,10 @@ build-go: deps
 # Build JS client
 build-js: deps
 	cd clients/javascript && npm run build
+
+# Build Java client
+build-java:
+	cd clients/java && mvn compile -q
 
 # Cross-compile clicker for all platforms (static binaries)
 # Output: clicker/bin/clicker-{os}-{arch}[.exe]
@@ -124,6 +128,15 @@ test-python: package-python
 		pip install -q -e ../../packages/python/vibium_darwin_arm64 -e . && \
 		python tests/test_basic.py
 
+# Run Java client tests
+test-java: build-go install-browser
+	@echo "━━━ Java Client Tests ━━━"
+	cd clients/java && mvn test
+
+# Package Java client JAR
+package-java: build-java
+	cd clients/java && mvn package -DskipTests -q
+
 # Kill zombie Chrome and chromedriver processes
 double-tap:
 	@echo "Killing zombie processes..."
@@ -139,6 +152,10 @@ clean-go:
 # Clean JS dist
 clean-js:
 	rm -rf clients/javascript/dist
+
+# Clean Java target
+clean-java:
+	cd clients/java && mvn clean -q 2>/dev/null || rm -rf clients/java/target
 
 # Clean built npm packages
 clean-npm-packages:
@@ -161,8 +178,8 @@ clean-cache:
 	rm -rf ~/Library/Caches/vibium/chrome-for-testing
 	rm -rf ~/.cache/vibium/chrome-for-testing
 
-# Clean everything (binaries + JS dist + packages + cache)
-clean-all: clean-go clean-js clean-packages clean-cache
+# Clean everything (binaries + JS dist + Java + packages + cache)
+clean-all: clean-go clean-js clean-java clean-packages clean-cache
 
 # Alias for clean-go + clean-js
 clean: clean-go clean-js
@@ -217,17 +234,20 @@ help:
 	@echo "  make                       - Build everything (default)"
 	@echo "  make build-go              - Build clicker binary"
 	@echo "  make build-js              - Build JS client"
+	@echo "  make build-java            - Build Java client"
 	@echo "  make build-go-all          - Cross-compile clicker for all platforms"
 	@echo ""
 	@echo "Package:"
 	@echo "  make package               - Build all packages (npm + Python)"
 	@echo "  make package-js            - Build npm packages only"
 	@echo "  make package-python        - Build Python wheels only"
+	@echo "  make package-java          - Build Java JAR"
 	@echo ""
 	@echo "Test:"
 	@echo "  make test                  - Run all tests (CLI + JS + MCP)"
 	@echo "  make test-cli              - Run CLI tests only"
 	@echo "  make test-js               - Run JS library tests only"
+	@echo "  make test-java             - Run Java client tests"
 	@echo "  make test-mcp              - Run MCP server tests only"
 	@echo "  make test-python           - Run Python client tests"
 	@echo ""
@@ -243,6 +263,7 @@ help:
 	@echo "  make clean                 - Clean binaries and JS dist"
 	@echo "  make clean-go              - Clean clicker binaries"
 	@echo "  make clean-js              - Clean JS client dist"
+	@echo "  make clean-java            - Clean Java client target"
 	@echo "  make clean-npm-packages    - Clean built npm packages"
 	@echo "  make clean-python-packages - Clean Python packages"
 	@echo "  make clean-packages        - Clean all packages (npm + Python)"
