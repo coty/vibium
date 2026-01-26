@@ -110,6 +110,27 @@ Before doing a full sync, check if JavaScript files have changed since the last 
 
 4. **For incremental syncs**, only process the changed files and their dependents.
 
+### Step 0.5: Sync Version
+
+Ensure the Java client version matches the project version:
+
+1. **Read the project version**:
+   ```bash
+   cat VERSION
+   ```
+
+2. **Check Java versions**:
+   ```bash
+   grep '<version>' clients/java/pom.xml | head -1
+   grep 'VERSION = ' clients/java/src/main/java/com/vibium/clicker/BinaryResolver.java
+   ```
+
+3. **Update if mismatched**:
+   - `pom.xml`: Set `<version>X.Y.Z-SNAPSHOT</version>` (keep `-SNAPSHOT` suffix during development)
+   - `BinaryResolver.java`: Set `private static final String VERSION = "X.Y.Z";`
+
+The BinaryResolver VERSION is used for the binary extraction cache path (`~/.cache/vibium/clicker/<VERSION>/`) to avoid version conflicts when users upgrade.
+
 ### Step 1: Gather Current State
 
 Read the JavaScript client to understand its public API:
@@ -496,7 +517,11 @@ Compile and test the Java client:
 cd clients/java && mvn clean compile
 ```
 
-If this is a new Java client setup, ensure the `pom.xml` is configured correctly. See `references/build-setup.md` for required dependencies, plugins, and binary bundling configuration.
+If this is a new Java client setup or the pom.xml is missing features:
+1. Use the **complete pom.xml template** in `references/build-setup.md`
+2. Ensure version properties are used for dependencies (e.g., `${java-websocket.version}`)
+3. Include all plugins: compiler, surefire, jar, shade, source
+4. Include binary bundling resources config
 
 Report any compilation errors for manual fixing.
 
